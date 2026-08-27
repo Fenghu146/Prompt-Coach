@@ -13,9 +13,8 @@ function has(text: string, re: RegExp): boolean {
   return re.test(text);
 }
 
-function toScoreBreakdown(text: string, problem: string, context?: string): import("@prompt-coach/shared").ScoreBreakdown {
-  const combined = `${text} ${problem} ${context || ""}`;
-  const combinedLower = combined.toLowerCase();
+function toScoreBreakdown(text: string, problem: string, ctx?: string): import("@prompt-coach/shared").ScoreBreakdown {
+  const combined = `${text} ${problem} ${ctx || ""}`;
 
   // Context: chip/model/framework/OS/peripheral/buffer
   let contextScore = 5;
@@ -61,19 +60,18 @@ function toScoreBreakdown(text: string, problem: string, context?: string): impo
 
   // Penalize long but empty structure: if no key fields, cap total
   const hasKeyField = has(combined, /stm32|芯片|f4\d+|uart|dma|i2c|spi/i) && has(combined, /expected|actual|期望|实际|已排查|验证/i);
-  let total = context + specificity + constraints + taskClarity + outputFormat;
-  if (!hasKeyField && total > 70) total = 70;
-  const capped = hasKeyField ? total : Math.min(total, 70);
-  // Distribute cap proportionally if needed
-  if (capped !== total) {
-    const ratio = capped / total;
+  let totalScore = contextScore + specificity + constraints + taskClarity + outputFormat;
+  if (!hasKeyField && totalScore > 70) totalScore = 70;
+  const capped = hasKeyField ? totalScore : Math.min(totalScore, 70);
+  if (capped !== totalScore) {
+    const ratio = capped / totalScore;
     const adjust = (n: number) => clamp(Math.round(n * ratio), 2, 20);
-    const adj = { context: adjust(context), specificity: adjust(specificity), constraints: adjust(constraints), taskClarity: adjust(taskClarity), outputFormat: adjust(outputFormat) };
+    const adj = { context: adjust(contextScore), specificity: adjust(specificity), constraints: adjust(constraints), taskClarity: adjust(taskClarity), outputFormat: adjust(outputFormat) };
     const newTotal = adj.context + adj.specificity + adj.constraints + adj.taskClarity + adj.outputFormat;
     return { ...adj, total: newTotal, suggestions: buildSuggestions(adj, combined) };
   }
 
-  return { context: contextScore, specificity, constraints, taskClarity, outputFormat, total, suggestions: buildSuggestions({ context: contextScore, specificity, constraints, taskClarity, outputFormat }, combined) };
+  return { context: contextScore, specificity, constraints, taskClarity, outputFormat, total: totalScore, suggestions: buildSuggestions({ context: contextScore, specificity, constraints, taskClarity, outputFormat }, combined) };
 }
 
 function buildSuggestions(scores: Record<string, number>, combined: string): string[] {

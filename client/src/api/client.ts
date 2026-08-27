@@ -21,11 +21,12 @@ export const api = {
   confirmRule: (caseId: string, ruleId: string, body?: unknown) =>
     req<import("@prompt-coach/shared").LearnedRule>(`/api/cases/${caseId}/rules/${ruleId}/confirm`, { method: "POST", body: JSON.stringify(body || {}) }),
   discardRule: (caseId: string, ruleId: string) => req<import("@prompt-coach/shared").LearnedRule>(`/api/cases/${caseId}/rules/${ruleId}/discard`, { method: "POST" }),
-  listRules: (q?: { query?: string; domain?: string; tag?: string }) => {
+  listRules: (q?: { query?: string; domain?: string; tag?: string; status?: string }) => {
     const sp = new URLSearchParams();
     if (q?.query) sp.set("query", q.query);
     if (q?.domain) sp.set("domain", q.domain);
     if (q?.tag) sp.set("tag", q.tag);
+    if (q?.status) sp.set("status", q.status);
     const s = sp.toString();
     return req<import("@prompt-coach/shared").LearnedRule[]>(`/api/rules${s ? "?" + s : ""}`);
   },

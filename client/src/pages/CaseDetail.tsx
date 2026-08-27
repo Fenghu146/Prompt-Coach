@@ -28,7 +28,7 @@ export function CaseDetail() {
       const cc = await api.getCase(id);
       setC(cc);
       setOutcome(cc.outcome || "");
-      const all = await api.listRules();
+      const all = await api.listRules({ status: "all" });
       setAllRules(all);
       setRules(all.filter((r) => r.sourceCaseIds.includes(cc.id)));
       const d = all.find((r) => r.sourceCaseIds.includes(cc.id) && r.status === "draft");
@@ -67,7 +67,6 @@ export function CaseDetail() {
     }
   }
 
-  const canLearn = true;
   const lowMaterial = c.debugLogs.length < 2 || !c.outcome;
 
   return (
@@ -131,7 +130,7 @@ export function CaseDetail() {
         <div className="bg-white border border-slate-200 rounded-xl p-4">
           <h2 className="font-semibold text-slate-900">优化 Prompt</h2>
           <p className="text-xs text-slate-500 mt-1">基于当前案例与已确认规则生成结构化 Prompt</p>
-          <div className="mt-3 flex gap-2">
+          <div className="mt-3 flex gap-2 flex-wrap">
             <button onClick={() => act(async () => {
                 const r = await api.improve(c.id);
                 setRetrievedIds(r.retrievedRuleIds || []);
@@ -141,6 +140,8 @@ export function CaseDetail() {
             <button onClick={() => act(() => api.judge(c.id).then(() => {}), "judge")} disabled={!c.improvedPrompt || busy === "judge"} className="px-4 py-2 border border-slate-200 rounded-lg text-sm disabled:opacity-50">
               {busy === "judge" ? "评分中…" : "对比评分"}
             </button>
+            {c.judge && <button onClick={() => act(() => api.judge(c.id).then(() => {}), "rejude")} disabled={busy==="rejude"} className="px-3 py-2 border border-slate-200 rounded-lg text-xs">重新生成评分</button>}
+            {c.improvedPrompt && <button onClick={() => act(async () => { await api.patchCase(c.id, { outcome: undefined } as never); setC({ ...c, judge: undefined } as never); }, "clearJudge")} className="px-3 py-2 border border-slate-200 rounded-lg text-xs">清除旧结果</button>}
           </div>
           {c.improvedPrompt ? (
             <div className="mt-4">
@@ -202,7 +203,7 @@ export function CaseDetail() {
                 }
               }, "learn")
             }
-            disabled={busy === "learn" || !canLearn}
+            disabled={busy === "learn"}
             className="px-4 py-2 bg-slate-900 text-white rounded-lg text-sm disabled:opacity-50"
           >
             {busy === "learn" ? "提取中…" : "提取规则草稿"}
@@ -229,7 +230,7 @@ export function CaseDetail() {
                   <button onClick={() => act(() => api.confirmRule(c.id, draftRule.id).then(() => {}), "confirm")} disabled={busy === "confirm"} className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-sm">
                     确认并保存
                   </button>
-                  <button onClick={() => act(() => api.discardRule(c.id, draftRule.id).then(() => {}), "discard")} disabled={busy === "discard"} className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm">
+                  <button onClick={() => { if (!confirm("确定丢弃该草稿？")) return; act(() => api.discardRule(c.id, draftRule.id).then(() => {}), "discard"); }} disabled={busy === "discard"} className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm">
                     丢弃
                   </button>
                   <CopyButton text={`${draftRule.title}\n\n经验：${draftRule.experience}\n\n规则：${draftRule.promptRule}`} />

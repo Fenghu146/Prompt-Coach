@@ -2,9 +2,10 @@
   "name": "@prompt-coach/shared",
   "version": "0.1.0",
   "type": "module",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc --project tsconfig.json --noEmit"
+    "build": "tsc --project tsconfig.json"
   },
   "dependencies": {
     "zod": "^4.4.3"

@@ -99,6 +99,16 @@ export const patchCaseInputSchema = z.object({
   outcome: outcomeSchema.optional(),
 });
 
+export const patchRuleInputSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  experience: z.string().min(1).optional(),
+  promptRule: z.string().min(1).optional(),
+  tags: z.array(z.string()).max(6).optional(),
+  confidence: z.enum(["low", "medium", "high"]).optional(),
+  domain: z.string().optional(),
+  status: z.enum(["draft", "confirmed", "archived"]).optional(),
+});
+
 export const generateInputSchema = z.object({
   problem: z.string().min(1),
   domain: z.string().optional(),

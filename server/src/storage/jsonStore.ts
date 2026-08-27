@@ -33,6 +33,28 @@ export async function writeJsonAtomic(filePath: string, data: unknown): Promise<
   }
 }
 
+export async function updateJsonAtomic<T>(filePath: string, fallback: T, updater: (current: T) => T | Promise<T>): Promise<T> {
+  const prev = writeQueues.get(filePath) || Promise.resolve();
+  let resolve!: () => void;
+  const next = new Promise<void>((r) => {
+    resolve = r;
+  });
+  writeQueues.set(filePath, prev.then(() => next));
+  await prev;
+  try {
+    const current = await readJson<T>(filePath, fallback);
+    const updated = await updater(current);
+    await mkdir(dirname(filePath), { recursive: true });
+    const tmp = `${filePath}.tmp.${Date.now()}.${Math.random().toString(36).slice(2, 8)}`;
+    await writeFile(tmp, JSON.stringify(updated, null, 2), "utf-8");
+    await rename(tmp, filePath);
+    return updated;
+  } finally {
+    resolve();
+    if (writeQueues.get(filePath) === next) writeQueues.delete(filePath);
+  }
+}
+
 export function dataPath(baseDir: string, name: string): string {
   return join(baseDir, `${name}.json`);
 }

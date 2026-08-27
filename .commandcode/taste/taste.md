@@ -1,0 +1,1 @@
+- Prefers to validate prompt self-optimization via dogfooding — wants ready-to-paste, project-grounded fixtures (title/domain/tags/problem/originalPrompt/context derived from current codebase/stack) to create test cases and compare weak Original vs Improved via Improve/Judge loop. Confidence: 0.78

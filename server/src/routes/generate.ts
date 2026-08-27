@@ -16,7 +16,12 @@ export function generateRouter(dataDir: string){
     const rules = await readJson<LearnedRule[]>(rulesPath, []);
     const retrieved = retrieveRules(rules, { query: parsed.data.problem, domain: parsed.data.domain, tag: parsed.data.tags?.[0], limit: 7, onlyConfirmed: true });
     const settings = await readJson<Settings>(settingsPath, DEFAULT_SETTINGS);
-    let provider = (settings.apiKey && settings.apiKey.trim().length>10) ? new OpenAICompatibleProvider(settings) as never : new LocalEmbeddedProvider() as never;
+    let provider =
+      settings.model === "__embedded__"
+        ? (new LocalEmbeddedProvider() as never)
+        : settings.apiKey && settings.apiKey.trim().length > 10
+          ? (new OpenAICompatibleProvider(settings) as never)
+          : (new LocalEmbeddedProvider() as never);
     let result; let usedFallback=false;
     try { result = await (provider as unknown as { generate:(x:never)=>Promise<never> }).generate({ problem: parsed.data.problem, domain: parsed.data.domain, context: parsed.data.context, retrievedRules: retrieved } as never); }
     catch(e: unknown){

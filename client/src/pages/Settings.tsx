@@ -1,54 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "../api/client.ts";
 import type { SafeSettings } from "@prompt-coach/shared";
-import { CHAT_MODEL_OPTIONS, EMBEDDING_MODEL_OPTIONS } from "@prompt-coach/shared";
-
-function ModelSelect({
-  label,
-  value,
-  onChange,
-  options,
-  remoteOptions,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: readonly { value: string; label: string }[];
-  remoteOptions: string[];
-  placeholder: string;
-}) {
-  const merged = [...new Set([...options.map((o) => o.value), ...remoteOptions])];
-  const isCustom = value !== "" && !merged.includes(value);
-  return (
-    <div>
-      <label className="text-xs font-medium text-slate-700">{label}</label>
-      <div className="mt-1 flex gap-2">
-        <div className="relative flex-1">
-          <select value={isCustom ? "__custom__" : value} onChange={(e) => {
-              const v = e.target.value;
-              if (v !== "__custom__") onChange(v);
-            }} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white appearance-none pr-8">
-            <option value="">{placeholder}</option>
-            {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-            {remoteOptions.filter((id) => !options.some((o) => o.value === id)).map((id) => <option key={id} value={id}>{id}（来自 API）</option>)}
-            {isCustom && <option value="__custom__">{value}（自定义）</option>}
-          </select>
-          <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">▼</span>
-        </div>
-      </div>
-      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder="可手动输入模型名" className="mt-2 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
-    </div>
-  );
-}
+import { CHAT_MODEL_OPTIONS, EMBEDDED_MODEL_ID } from "@prompt-coach/shared";
 
 export function Settings() {
   const [s, setS] = useState<SafeSettings | null>(null);
-  const [form, setForm] = useState({ baseURL: "", apiKey: "", model: "", embeddingModel: "", apiMode: "auto" as SafeSettings["apiMode"], timeoutMs: 30000 });
+  const [form, setForm] = useState({ baseURL: "", apiKey: "", model: "", apiMode: "auto" as SafeSettings["apiMode"], timeoutMs: 30000 });
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState("");
   const [loadError, setLoadError] = useState("");
-  const [remote, setRemote] = useState<{ chat: string[]; embedding: string[] }>({ chat: [], embedding: [] });
+  const [remote, setRemote] = useState<string[]>([]);
   const [modelsLoading, setModelsLoading] = useState(false);
 
   const load = useCallback(async () => {
@@ -56,7 +17,7 @@ export function Settings() {
     try {
       const cur = await api.getSettings();
       setS(cur);
-      setForm({ baseURL: cur.baseURL, apiKey: "", model: cur.model, embeddingModel: cur.embeddingModel, apiMode: cur.apiMode, timeoutMs: cur.timeoutMs });
+      setForm({ baseURL: cur.baseURL, apiKey: "", model: cur.model, apiMode: cur.apiMode, timeoutMs: cur.timeoutMs });
     } catch (e: unknown) {
       setLoadError((e as Error).message);
     }
@@ -70,7 +31,7 @@ export function Settings() {
     setModelsLoading(true);
     try {
       const r = await api.listModels();
-      setRemote(r);
+      setRemote(r.chat);
     } finally {
       setModelsLoading(false);
     }
@@ -84,7 +45,7 @@ export function Settings() {
     setBusy("save");
     setMsg("");
     try {
-      const body: Record<string, unknown> = { baseURL: form.baseURL, model: form.model, embeddingModel: form.embeddingModel, apiMode: form.apiMode, timeoutMs: form.timeoutMs };
+      const body: Record<string, unknown> = { baseURL: form.baseURL, model: form.model, apiMode: form.apiMode, timeoutMs: form.timeoutMs };
       if (form.apiKey.trim()) body.apiKey = form.apiKey.trim();
       const cur = await api.saveSettings(body);
       setS(cur);
@@ -110,6 +71,10 @@ export function Settings() {
     }
   }
 
+  const presetValues: string[] = CHAT_MODEL_OPTIONS.map((o) => o.value);
+  const remoteExtra = remote.filter((id) => !presetValues.includes(id));
+  const isCustom = form.model !== "" && !presetValues.includes(form.model) && !remote.includes(form.model);
+
   if (loadError) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-xl p-4">
@@ -122,11 +87,11 @@ export function Settings() {
   return (
     <div className="max-w-2xl">
       <h1 className="text-xl font-bold text-slate-900">设置</h1>
-      <p className="text-sm text-slate-600 mt-1">配置 OpenAI 兼容接口（支持 chat/completions 与 responses），未配置时自动使用内嵌模型。模型支持下拉选择与手动输入。</p>
+      <p className="text-sm text-slate-600 mt-1">配置 OpenAI 兼容接口，未配置时自动使用内嵌模型；支持 DeepSeek（chat/completions）。</p>
       <div className="mt-4 bg-white border border-slate-200 rounded-xl p-4 space-y-3">
         <div>
           <label className="text-xs font-medium text-slate-700">baseURL</label>
-          <input value={form.baseURL} onChange={(e) => setForm({ ...form, baseURL: e.target.value })} placeholder="https://api.openai.com/v1" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+          <input value={form.baseURL} onChange={(e) => setForm({ ...form, baseURL: e.target.value })} placeholder="https://api.openai.com/v1 或 https://api.deepseek.com" className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
         </div>
         <div>
           <label className="text-xs font-medium text-slate-700">
@@ -134,9 +99,36 @@ export function Settings() {
           </label>
           <input value={form.apiKey} onChange={(e) => setForm({ ...form, apiKey: e.target.value })} placeholder={s.hasApiKey ? "留空保留原 Key" : "sk-..."} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
         </div>
-        <div className="grid grid-cols-1 gap-3">
-          <ModelSelect label="对话模型（chat）" value={form.model} onChange={(v) => setForm({ ...form, model: v })} options={CHAT_MODEL_OPTIONS} remoteOptions={remote.chat} placeholder="选择或输入" />
-          <ModelSelect label="向量模型（embedding）" value={form.embeddingModel} onChange={(v) => setForm({ ...form, embeddingModel: v })} options={EMBEDDING_MODEL_OPTIONS} remoteOptions={remote.embedding} placeholder="选择或输入" />
+        <div>
+          <label className="text-xs font-medium text-slate-700">对话模型（chat）</label>
+          <div className="relative mt-1">
+            <select
+              value={isCustom ? "__custom__" : form.model}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v !== "__custom__") setForm({ ...form, model: v });
+              }}
+              className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white appearance-none pr-8"
+            >
+              <option value="">选择或输入</option>
+              {CHAT_MODEL_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                  {o.value === EMBEDDED_MODEL_ID ? " — 零 Token/离线可用" : ""}
+                </option>
+              ))}
+              {remoteExtra.map((id) => (
+                <option key={id} value={id}>
+                  {id}（来自 API）
+                </option>
+              ))}
+              {isCustom && <option value="__custom__">{form.model}（自定义）</option>}
+            </select>
+            <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">▼</span>
+          </div>
+          <input value={form.model} onChange={(e) => setForm({ ...form, model: e.target.value })} placeholder="可手动输入模型名，如 deepseek-chat / gpt-4o-mini" className="mt-2 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm" />
+          {form.model === EMBEDDED_MODEL_ID && <p className="text-xs text-slate-500 mt-1">已选择本地内嵌，不消耗 Token，离线可用</p>}
+          {/deepseek/i.test(form.model) && <p className="text-xs text-slate-500 mt-1">DeepSeek 仅支持 chat/completions，已自动优化为低延迟/低 Token 配置</p>}
         </div>
         <div className="flex items-center gap-2">
           <button onClick={fetchModels} disabled={modelsLoading || !s.hasApiKey} className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs disabled:opacity-50">
@@ -147,9 +139,9 @@ export function Settings() {
         <div>
           <label className="text-xs font-medium text-slate-700">apiMode</label>
           <select value={form.apiMode} onChange={(e) => setForm({ ...form, apiMode: e.target.value as never })} className="mt-1 w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
-            <option value="auto">auto（优先 responses，失败回退 chat）</option>
-            <option value="responses">responses</option>
+            <option value="auto">auto（DeepSeek 自动走 chat）</option>
             <option value="chat">chat</option>
+            <option value="responses">responses</option>
           </select>
         </div>
         <div>

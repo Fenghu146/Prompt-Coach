@@ -16,6 +16,7 @@ export function casesRouter(dataDir: string) {
 
   async function getProvider() {
     const settings = await readJson<Settings>(settingsPath, DEFAULT_SETTINGS);
+    if (settings.model === "__embedded__") return new LocalEmbeddedProvider();
     if (settings.apiKey && settings.apiKey.trim().length > 10) {
       return new OpenAICompatibleProvider(settings);
     }

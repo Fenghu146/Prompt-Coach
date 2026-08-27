@@ -62,11 +62,12 @@ export type LearnedRule = {
   updatedAt: string;
 };
 
+export const EMBEDDED_MODEL_ID = "__embedded__" as const;
+
 export type Settings = {
   baseURL: string;
   apiKey: string;
   model: string;
-  embeddingModel: string;
   apiMode: "chat" | "responses" | "auto";
   timeoutMs: number;
   updatedAt: string;
@@ -77,25 +78,18 @@ export type SafeSettings = Omit<Settings, "apiKey"> & { apiKeyMasked: string; ha
 export const DEFAULT_SETTINGS: Settings = {
   baseURL: "https://api.openai.com/v1",
   apiKey: "",
-  model: "gpt-4o-mini",
-  embeddingModel: "text-embedding-3-small",
+  model: EMBEDDED_MODEL_ID,
   apiMode: "auto",
   timeoutMs: 30000,
   updatedAt: new Date().toISOString(),
 };
 
 export const CHAT_MODEL_OPTIONS = [
+  { value: "__embedded__", label: "本地内嵌（离线/零 Token）", isEmbedded: true },
+  { value: "deepseek-chat", label: "deepseek-chat" },
+  { value: "deepseek-reasoner", label: "deepseek-reasoner" },
   { value: "gpt-4o-mini", label: "gpt-4o-mini" },
   { value: "gpt-4o", label: "gpt-4o" },
-  { value: "gpt-4.1-mini", label: "gpt-4.1-mini" },
-  { value: "gpt-4.1", label: "gpt-4.1" },
-  { value: "o4-mini", label: "o4-mini" },
-] as const;
-
-export const EMBEDDING_MODEL_OPTIONS = [
-  { value: "text-embedding-3-small", label: "text-embedding-3-small" },
-  { value: "text-embedding-3-large", label: "text-embedding-3-large" },
-  { value: "text-embedding-ada-002", label: "text-embedding-ada-002" },
 ] as const;
 
 export const OUTCOME_LABELS: Record<Outcome, string> = {

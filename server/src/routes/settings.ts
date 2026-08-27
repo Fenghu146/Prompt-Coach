@@ -12,7 +12,6 @@ function toSafe(s: Settings): SafeSettings {
   return {
     baseURL: s.baseURL,
     model: s.model,
-    embeddingModel: s.embeddingModel,
     apiMode: s.apiMode,
     timeoutMs: s.timeoutMs,
     updatedAt: s.updatedAt,
@@ -36,7 +35,6 @@ export function settingsRouter(dataDir: string) {
       baseURL: req.body?.baseURL ?? current.baseURL,
       apiKey: apiKey ?? current.apiKey,
       model: req.body?.model ?? current.model,
-      embeddingModel: req.body?.embeddingModel ?? current.embeddingModel,
       apiMode: req.body?.apiMode ?? current.apiMode,
       timeoutMs: req.body?.timeoutMs ?? current.timeoutMs,
       updatedAt: new Date().toISOString(),
@@ -48,21 +46,20 @@ export function settingsRouter(dataDir: string) {
   });
   router.get("/models", async (_req, res) => {
     const s = await readJson<Settings>(p, DEFAULT_SETTINGS);
-    if (!s.apiKey) return res.json({ chat: [], embedding: [] });
+    if (!s.apiKey) return res.json({ chat: [] });
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 8000);
       const base = s.baseURL.replace(/\/$/, "");
       const r = await fetch(`${base}/models`, { headers: { Authorization: `Bearer ${s.apiKey}` }, signal: ctrl.signal });
       clearTimeout(t);
-      if (!r.ok) return res.json({ chat: [], embedding: [] });
+      if (!r.ok) return res.json({ chat: [] });
       const j = (await r.json()) as { data?: { id: string }[] };
       const ids = (j.data || []).map((m) => m.id);
-      const chat = ids.filter((id) => /gpt|o1|o3|o4/i.test(id)).sort();
-      const embedding = ids.filter((id) => /embedding/i.test(id)).sort();
-      return res.json({ chat, embedding });
+      const chat = ids.filter((id) => !/embedding/i.test(id)).sort();
+      return res.json({ chat });
     } catch {
-      return res.json({ chat: [], embedding: [] });
+      return res.json({ chat: [] });
     }
   });
 

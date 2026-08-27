@@ -71,7 +71,6 @@ export const settingsSchema = z.object({
   baseURL: z.string().url(),
   apiKey: z.string(),
   model: z.string().min(1),
-  embeddingModel: z.string().min(1),
   apiMode: z.enum(["chat", "responses", "auto"]),
   timeoutMs: z.number().min(1000).max(120000),
   updatedAt: z.string().min(1),

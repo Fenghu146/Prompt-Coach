@@ -34,4 +34,5 @@ export const api = {
   getSettings: () => req<import("@prompt-coach/shared").SafeSettings>("/api/settings"),
   saveSettings: (body:unknown) => req<import("@prompt-coach/shared").SafeSettings>("/api/settings",{method:"POST", body: JSON.stringify(body)}),
   testSettings: () => req<{ok:boolean,error?:string,provider?:string}>("/api/settings/test",{method:"POST"}),
+  listModels: () => req<{chat:string[],embedding:string[]}>("/api/settings/models"),
 };
